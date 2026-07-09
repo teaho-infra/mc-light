@@ -32,3 +32,33 @@ def test_send_command_opens_with_timeouts_and_writes():
 def test_commands_map_on_off():
     assert mc_light.COMMANDS["on"] == b"1"
     assert mc_light.COMMANDS["off"] == b"0"
+
+
+def test_main_unknown_arg_returns_0_and_skips_serial():
+    with mock.patch.object(mc_light, "find_light_port") as find:
+        assert mc_light.main(["bogus"]) == 0
+        find.assert_not_called()
+
+
+def test_main_no_arg_returns_0():
+    assert mc_light.main([]) == 0
+
+
+def test_main_no_device_returns_0_and_skips_send():
+    with mock.patch.object(mc_light, "find_light_port", return_value=None), \
+         mock.patch.object(mc_light, "send_command") as send:
+        assert mc_light.main(["on"]) == 0
+        send.assert_not_called()
+
+
+def test_main_sends_correct_byte_when_device_found():
+    with mock.patch.object(mc_light, "find_light_port", return_value="COM3"), \
+         mock.patch.object(mc_light, "send_command") as send:
+        assert mc_light.main(["off"]) == 0
+        send.assert_called_once_with("COM3", b"0")
+
+
+def test_main_returns_0_when_send_raises():
+    with mock.patch.object(mc_light, "find_light_port", return_value="COM3"), \
+         mock.patch.object(mc_light, "send_command", side_effect=OSError("busy")):
+        assert mc_light.main(["on"]) == 0

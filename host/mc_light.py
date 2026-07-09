@@ -22,3 +22,22 @@ def send_command(port, byte, timeout=1.0):
     """Open `port`, write `byte`, close. Raises on failure."""
     with serial.Serial(port, timeout=timeout, write_timeout=timeout) as ser:
         ser.write(byte)
+
+
+def main(argv=None):
+    argv = argv if argv is not None else sys.argv[1:]
+    if not argv or argv[0] not in COMMANDS:
+        return 0
+    byte = COMMANDS[argv[0]]
+    port = find_light_port()
+    if port is None:
+        return 0
+    try:
+        send_command(port, byte)
+    except Exception:
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
