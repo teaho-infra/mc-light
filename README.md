@@ -19,7 +19,7 @@
 ```
 pip install -r host/requirements.txt
 ```
-自测:`python host/mc_light.py on`(不插灯也应静默退出、返回 0)。
+自测:`python3 host/mc_light.py on`(不插灯也应静默退出、返回 0)。
 
 ### 3. Claude Code hooks
 把 `hooks/settings.ubuntu.json`(Ubuntu)或 `hooks/settings.windows.json`(Windows)的内容合并进 `~/.claude/settings.json`,并把命令里的路径改成你的绝对路径。Windows 用 `python`,Ubuntu 用 `python3`。
