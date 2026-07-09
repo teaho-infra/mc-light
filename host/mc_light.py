@@ -13,3 +13,12 @@ def find_light_port(vid=XIAO_VID):
         if port.vid == vid:
             return port.device
     return None
+
+
+COMMANDS = {"on": b"1", "off": b"0"}
+
+
+def send_command(port, byte, timeout=1.0):
+    """Open `port`, write `byte`, close. Raises on failure."""
+    with serial.Serial(port, timeout=timeout, write_timeout=timeout) as ser:
+        ser.write(byte)
