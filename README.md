@@ -1,6 +1,6 @@
 # mc-light
 
-感知 Claude Code agent 状态的麦当劳金拱门 "M" 指示灯。agent 干活时 M 亮金色,空闲时熄灭。USB 连接,跨平台(Windows / Ubuntu)。
+感知 Claude Code agent 状态的麦当劳金拱门 "M" 指示灯。agent 干活时 M 常亮金色,等待授权时闪烁,空闲时熄灭。USB 连接,跨平台(Windows / Ubuntu)。
 
 ## 硬件
 
@@ -30,12 +30,14 @@ pip install -r host/requirements.txt
 Claude Code 事件 → hook 脚本 → USB 串口(单字符 1/0)→ XIAO 固件 → RGB 灯
 ```
 
-- `UserPromptSubmit` → 发 `1`(亮金色)
-- `Stop` → 发 `0`(灭)
+- `UserPromptSubmit` → 发 `1`(常亮金,干活中)
+- `Notification`(需要授权)→ 发 `2`(金色闪烁,等待授权)
+- `PostToolUse`(工具执行完,含授权后)→ 发 `1`(恢复常亮)
+- `Stop` → 发 `0`(灭,空闲)
 - 脚本按 USB VID `0x2E8A` 自动找设备,不硬编码端口名。
 - 找不到灯或出错时脚本静默退出,绝不影响 Claude Code。
-- 固件 10 分钟看门狗:若 Claude 异常退出未发 `0`,灯会自动熄灭。
+- 固件 10 分钟看门狗:常亮或闪烁超时未更新则自动熄灭。
 
 ## 验收
 
-插上灯用 Claude Code:发一句话 → M 亮金色;答完 → M 灭。不插灯时 Claude Code 完全正常。
+插上灯用 Claude Code:发一句话 → M 常亮金;触发需要授权的操作 → M 闪烁;点允许 → M 恢复常亮;答完 → M 灭。不插灯时 Claude Code 完全正常。
