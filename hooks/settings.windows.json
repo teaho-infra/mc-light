@@ -7,6 +7,20 @@
         ]
       }
     ],
+    "Notification": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python C:\\ABSOLUTE\\PATH\\mc-light\\host\\mc_light.py wait" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python C:\\ABSOLUTE\\PATH\\mc-light\\host\\mc_light.py on" }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
