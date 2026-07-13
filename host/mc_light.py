@@ -15,7 +15,7 @@ def find_light_port(vid=XIAO_VID):
     return None
 
 
-COMMANDS = {"on": b"1", "off": b"0"}
+COMMANDS = {"on": b"1", "off": b"0", "wait": b"2"}
 
 
 def send_command(port, byte, timeout=1.0):

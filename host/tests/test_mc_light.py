@@ -62,3 +62,14 @@ def test_main_returns_0_when_send_raises():
     with mock.patch.object(mc_light, "find_light_port", return_value="COM3"), \
          mock.patch.object(mc_light, "send_command", side_effect=OSError("busy")):
         assert mc_light.main(["on"]) == 0
+
+
+def test_commands_map_wait():
+    assert mc_light.COMMANDS["wait"] == b"2"
+
+
+def test_main_sends_two_for_wait_when_device_found():
+    with mock.patch.object(mc_light, "find_light_port", return_value="COM3"), \
+         mock.patch.object(mc_light, "send_command") as send:
+        assert mc_light.main(["wait"]) == 0
+        send.assert_called_once_with("COM3", b"2")
