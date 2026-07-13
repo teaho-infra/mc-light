@@ -27,7 +27,7 @@ pip install -r host/requirements.txt
 ## 工作原理
 
 ```
-Claude Code 事件 → hook 脚本 → USB 串口(单字符 1/0)→ XIAO 固件 → RGB 灯
+Claude Code 事件 → hook 脚本 → USB 串口(单字符 1/2/0)→ XIAO 固件 → RGB 灯
 ```
 
 - `UserPromptSubmit` → 发 `1`(常亮金,干活中)
