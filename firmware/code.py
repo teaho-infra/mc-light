@@ -8,7 +8,7 @@ import usb_cdc
 
 GOLD = (255, 180, 0)          # 麦当劳金黄色
 OFF = (0, 0, 0)
-WATCHDOG_SECONDS = 600        # 10 分钟兜底熄灭
+WATCHDOG_SECONDS = 45         # 45 秒兜底熄灭:Ctrl+C 中断后 Stop hook 不触发,靠这个自动熄
 
 # XIAO RP2040 板载 NeoPixel 需要先给 NEOPIXEL_POWER 供电
 power = digitalio.DigitalInOut(board.NEOPIXEL_POWER)

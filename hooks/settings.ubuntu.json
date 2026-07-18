@@ -3,28 +3,35 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 /ABSOLUTE/PATH/mc-light/host/mc_light.py on" }
+          { "type": "command", "command": "conda run -n mc-light --no-capture-output python3 /home/leonbook5/IdeaProjects/agentspace/mc-light/host/mc_light.py on" }
         ]
       }
     ],
     "Notification": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 /ABSOLUTE/PATH/mc-light/host/mc_light.py wait" }
+          { "type": "command", "command": "conda run -n mc-light --no-capture-output python3 /home/leonbook5/IdeaProjects/agentspace/mc-light/host/mc_light.py wait" }
         ]
       }
     ],
     "PostToolUse": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 /ABSOLUTE/PATH/mc-light/host/mc_light.py on" }
+          { "type": "command", "command": "conda run -n mc-light --no-capture-output python3 /home/leonbook5/IdeaProjects/agentspace/mc-light/host/mc_light.py on" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python3 /ABSOLUTE/PATH/mc-light/host/mc_light.py off" }
+          { "type": "command", "command": "conda run -n mc-light --no-capture-output python3 /home/leonbook5/IdeaProjects/agentspace/mc-light/host/mc_light.py off" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "conda run -n mc-light --no-capture-output python3 /home/leonbook5/IdeaProjects/agentspace/mc-light/host/mc_light.py off" }
         ]
       }
     ]
