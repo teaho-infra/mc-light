@@ -1,64 +1,52 @@
-"""生成 mc-light 的 3D 打印模型:金拱门 M 光盒 + 桌面底座。
+"""生成 mc-light 的显示器侧贴 3D 打印模型。
 
-输出三个 STL(写到本脚本同目录):
-  mc_light_M.stl         —— M 光盒(前面板 + 侧壁,背面开口),平躺打印(前面朝下)
-  mc_light_base.stl      —— 桌面底座(顶部插槽 + 内腔 + 背面 USB 出线口)
-  mc_light_assembled.stl —— 组装预览(仅供查看,不用于打印)
+输出 STL(写到本脚本同目录):
+  mc_light_monitor_back.stl              -- 后壳:贴屏平背 + XIAO 腔 + 底部 USB-C 开口
+  mc_light_monitor_front_red.stl         -- 多色前盖红色半透明区域
+  mc_light_monitor_front_M.stl           -- 多色前盖黄色半透明 M 区域
+  mc_light_monitor_front_assembled.stl   -- 前盖红黄区域装配预览
+  mc_light_monitor_assembled.stl         -- 整体装配预览
 
-所有尺寸单位 mm,集中在下面的参数区,按需修改后重跑即可。
-运行:python hardware/generate_m_shell.py
+所有尺寸单位 mm,集中在参数区,按需修改后重跑即可。
+运行:python3 hardware/generate_m_shell.py
 """
 import os
 
 import numpy as np
 import trimesh
-from shapely.geometry import Polygon, MultiPolygon
 from shapely.affinity import translate as shp_translate
+from shapely.geometry import MultiPolygon, Polygon, box as shp_box
 
 # ----------------------------- 参数区 -----------------------------
-# M 轮廓
-M_WIDTH = 60.0        # M 总宽
-ARCH_R = M_WIDTH / 4  # 驼峰半径(=15,由两峰相接决定:W=4R)
-LEG_H = 30.0          # 立腿高度(峰顶 = LEG_H + ARCH_R)
-M_HEIGHT = LEG_H + ARCH_R  # M 总高(=45)
-CURVE_STEPS = 120     # 顶部曲线采样点数(越大越圆滑)
+BOX_W = 38.0
+BOX_H = 38.0
+BOX_D = 14.0
+FRONT_T = 1.2
+BACK_D = BOX_D - FRONT_T
+WALL_T = 2.0
+PRESS_CLEAR = 0.35
+LIP_T = 1.0
+LIP_D = 1.2
 
-# M 光盒
-FACE_T = 2.0          # 前面板厚度(半透明,越薄越透光)
-WALL_T = 2.5          # 侧壁厚度
-BOX_DEPTH = 14.0      # 光盒总进深(容纳灯珠/走线)
+XIAO_W = 17.8
+XIAO_H = 21.0
+BOARD_POCKET_W = XIAO_W + 1.4
+BOARD_POCKET_H = XIAO_H + 1.4
+BOARD_RAIL_T = 1.0
+BOARD_RAIL_H = 1.2
 
-# 底座
-BASE_W = 74.0         # 底座宽(略大于 M 宽)
-BASE_D = 40.0         # 底座进深
-BASE_H = 24.0         # 底座高
-BASE_WALL = 2.5       # 底座壁厚
-SLOT_DEPTH = 8.0      # 顶部插槽深度(M 底边插入量)
-SLOT_CLEAR = 0.4      # 插槽单边间隙(方便插拔)
-USB_W = 12.0          # 背面 USB 出线口宽
-USB_H = 7.0           # 背面 USB 出线口高
+USB_OPEN_W = 13.5
+USB_OPEN_H = 8.5
+USB_OPEN_D = BACK_D + 0.6
+
+M_WIDTH = 24.0
+ARCH_R = M_WIDTH / 4.0
+LEG_H = 12.0
+M_HEIGHT = LEG_H + ARCH_R
+CURVE_STEPS = 120
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
-ENGINE = "manifold"   # 布尔引擎
-
-
-# ----------------------------- M 轮廓 -----------------------------
-def m_polygon():
-    """返回金拱门 M 的填充多边形(shapely Polygon),位于 XY 平面。
-
-    顶部 = 两个半圆驼峰取上包络,中间自然形成 V 形凹谷;两侧为竖直立腿,底边平直。
-    """
-    cx1 = ARCH_R                 # 左峰中心 x
-    cx2 = M_WIDTH - ARCH_R       # 右峰中心 x
-    xs = np.linspace(0.0, M_WIDTH, CURVE_STEPS)
-    h1 = np.sqrt(np.clip(ARCH_R**2 - (xs - cx1) ** 2, 0, None))
-    h2 = np.sqrt(np.clip(ARCH_R**2 - (xs - cx2) ** 2, 0, None))
-    top = LEG_H + np.maximum(h1, h2)
-
-    pts = [(0.0, 0.0)]                       # 左下角
-    pts += [(float(x), float(y)) for x, y in zip(xs, top)]  # 沿顶部曲线
-    pts += [(M_WIDTH, 0.0)]                  # 右下角
-    return Polygon(pts)
+ENGINE = "manifold"
 
 
 def largest(poly):
@@ -68,73 +56,106 @@ def largest(poly):
     return poly
 
 
-# ----------------------------- M 光盒 -----------------------------
-def build_m_box():
-    outer = m_polygon()
-    inner = largest(outer.buffer(-WALL_T))  # 内腔轮廓(四周内缩壁厚)
-
-    solid = trimesh.creation.extrude_polygon(outer, height=BOX_DEPTH)      # z: 0..DEPTH
-    cavity = trimesh.creation.extrude_polygon(inner, height=BOX_DEPTH - FACE_T)
-    cavity.apply_translation([0, 0, FACE_T])   # 前面留 FACE_T 实心面板,背面开口
-
-    shell = trimesh.boolean.difference([solid, cavity], engine=ENGINE)
-    return shell
+def make_box(extents, center):
+    mesh = trimesh.creation.box(extents=extents)
+    mesh.apply_translation(center)
+    return mesh
 
 
-# ----------------------------- 底座 -----------------------------
-def build_base():
-    # 外形盒
-    base = trimesh.creation.box(extents=[BASE_W, BASE_D, BASE_H])
-    base.apply_translation([0, 0, BASE_H / 2.0])  # 底面贴 z=0
+def m_polygon(width=M_WIDTH):
+    """返回居中的麦当劳风格 M 填充多边形,位于 XY 平面。"""
+    arch_r = width / 4.0
+    leg_h = LEG_H * (width / M_WIDTH)
+    cx1 = arch_r
+    cx2 = width - arch_r
+    xs = np.linspace(0.0, width, CURVE_STEPS)
+    h1 = np.sqrt(np.clip(arch_r**2 - (xs - cx1) ** 2, 0, None))
+    h2 = np.sqrt(np.clip(arch_r**2 - (xs - cx2) ** 2, 0, None))
+    top = leg_h + np.maximum(h1, h2)
+    pts = [(0.0, 0.0)]
+    pts += [(float(x), float(y)) for x, y in zip(xs, top)]
+    pts += [(width, 0.0)]
+    poly = Polygon(pts)
+    return shp_translate(poly, xoff=-width / 2.0, yoff=-poly.bounds[3] / 2.0)
 
-    # 内腔(容纳 XIAO 板;底面开口便于放板/走线)
-    cav = trimesh.creation.box(
-        extents=[BASE_W - 2 * BASE_WALL, BASE_D - 2 * BASE_WALL, BASE_H - BASE_WALL]
+
+def build_front_parts():
+    """返回红色背景区域和黄色 M 区域;两者 z 范围完全一致,正面齐平。"""
+    face = shp_box(-BOX_W / 2.0, -BOX_H / 2.0, BOX_W / 2.0, BOX_H / 2.0)
+    m_mark = m_polygon()
+    red_area = face.difference(m_mark)
+
+    red = trimesh.creation.extrude_polygon(red_area, height=FRONT_T)
+    yellow = trimesh.creation.extrude_polygon(m_mark, height=FRONT_T)
+    return red, yellow
+
+
+def build_front_assembled():
+    red, yellow = build_front_parts()
+    return trimesh.util.concatenate([red, yellow])
+
+
+def build_back_shell():
+    """后壳:背面平整,正面开口,底部 USB-C 开口,内部有 XIAO 限位结构。"""
+    outer = make_box([BOX_W, BOX_H, BACK_D], [0, 0, BACK_D / 2.0])
+    inner = make_box(
+        [BOX_W - 2 * WALL_T, BOX_H - 2 * WALL_T, BACK_D - WALL_T],
+        [0, 0, WALL_T + (BACK_D - WALL_T) / 2.0],
     )
-    cav.apply_translation([0, 0, (BASE_H - BASE_WALL) / 2.0])  # 顶部留 BASE_WALL 顶板
-
-    # 顶部插槽:接纳 M 底边(宽 M_WIDTH,厚 BOX_DEPTH)
-    slot = trimesh.creation.box(
-        extents=[M_WIDTH + 2 * SLOT_CLEAR, BOX_DEPTH + 2 * SLOT_CLEAR, SLOT_DEPTH + 1]
+    usb_cut = make_box(
+        [USB_OPEN_W, WALL_T * 3.0, USB_OPEN_H],
+        [0, -BOX_H / 2.0, USB_OPEN_H / 2.0],
     )
-    slot.apply_translation([0, 0, BASE_H - SLOT_DEPTH / 2.0])  # 从顶部往下切 SLOT_DEPTH
+    shell = trimesh.boolean.difference([outer, inner, usb_cut], engine=ENGINE)
 
-    # 背面 USB 出线口
-    usb = trimesh.creation.box(extents=[USB_W, 4 * BASE_WALL, USB_H])
-    usb.apply_translation([0, -BASE_D / 2.0, BASE_H / 2.0])
+    # 限位筋:贴在内腔后壁上,板子长边沿 Y(竖直),USB-C 端朝 -Y(下)。
+    # rail_z 取 WALL_T + BOARD_RAIL_H/2,使筋落在盒内 z∈[WALL_T, WALL_T+BOARD_RAIL_H],
+    # 不凸出后壳前口( BACK_D )。
+    rail_y_gap = BOARD_POCKET_W / 2.0 + BOARD_RAIL_T / 2.0
+    rail_z = WALL_T + BOARD_RAIL_H / 2.0
+    left_rail = make_box(
+        [BOARD_RAIL_T, BOARD_POCKET_H, BOARD_RAIL_H],
+        [-rail_y_gap, 0, rail_z],
+    )
+    right_rail = make_box(
+        [BOARD_RAIL_T, BOARD_POCKET_H, BOARD_RAIL_H],
+        [rail_y_gap, 0, rail_z],
+    )
+    bottom_stop = make_box(
+        [BOARD_POCKET_W + 2 * BOARD_RAIL_T, BOARD_RAIL_T, BOARD_RAIL_H],
+        [0, -BOARD_POCKET_H / 2.0, rail_z],
+    )
+    return trimesh.util.concatenate([shell, left_rail, right_rail, bottom_stop])
 
-    return trimesh.boolean.difference([base, cav, slot, usb], engine=ENGINE)
+
+def build_monitor_assembled():
+    back = build_back_shell()
+    front = build_front_assembled()
+    front.apply_translation([0, 0, BACK_D])
+    return trimesh.util.concatenate([back, front])
 
 
-# ----------------------------- 组装预览 -----------------------------
-def assembled(m_box, base):
-    """把 M 竖起来插进底座插槽,仅供预览。"""
-    m = m_box.copy()
-    # M 原始:X=[0,60] Y=[0,45](高) Z=[0,14](进深)
-    m.apply_translation([-M_WIDTH / 2.0, 0, -BOX_DEPTH / 2.0])  # X 居中,Z 居中
-    # 绕 X 轴 +90°:高度(Y)→竖直(Z),进深(Z)→ -Y
-    m.apply_transform(trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0]))
-    # 底边(原 y=0)现在在 z=0;抬到底座顶并插入 SLOT_DEPTH
-    m.apply_translation([0, 0, BASE_H - SLOT_DEPTH])
-    return trimesh.util.concatenate([base, m])
+OUTPUTS = [
+    ("mc_light_monitor_back.stl", build_back_shell),
+    ("mc_light_monitor_front_red.stl", lambda: build_front_parts()[0]),
+    ("mc_light_monitor_front_M.stl", lambda: build_front_parts()[1]),
+    ("mc_light_monitor_front_assembled.stl", build_front_assembled),
+    ("mc_light_monitor_assembled.stl", build_monitor_assembled),
+]
 
 
 def main():
-    m_box = build_m_box()
-    base = build_base()
-
-    for name, mesh in [
-        ("mc_light_M.stl", m_box),
-        ("mc_light_base.stl", base),
-        ("mc_light_assembled.stl", assembled(m_box, base)),
-    ]:
+    for name, builder in OUTPUTS:
+        mesh = builder()
         path = os.path.join(OUT_DIR, name)
         mesh.export(path)
         wt = getattr(mesh, "is_watertight", None)
-        print(f"{name}: {len(mesh.vertices)} verts, {len(mesh.faces)} faces, "
-              f"watertight={wt}")
+        print(
+            f"{name}: {len(mesh.vertices)} verts, {len(mesh.faces)} faces, "
+            f"watertight={wt}"
+        )
 
-    print("完成。M 光盒平躺打印(前面朝下);底座单独打印。")
+    print("完成。后壳单独打印;前盖红色区域和黄色 M 区域作为多色同层前盖合并打印。")
 
 
 if __name__ == "__main__":
