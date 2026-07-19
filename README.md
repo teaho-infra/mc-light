@@ -6,7 +6,21 @@
 
 - Seeed XIAO RP2040 ×1(板载 NeoPixel RGB 灯)
 - USB-C 数据线 ×1(必须是数据线,非纯充电线)
-- 3D 打印:半透明金拱门 M 外壳(约 6cm)+ 底座,PLA 半透明/白色。M 罩在板载灯珠上方,靠打印件壁厚做光线漫射。
+- 3D 打印:显示器右侧贴装方形灯盒。后壳容纳 XIAO RP2040,USB-C 从底部往上插入;前盖用红色半透明区域 + 黄色半透明 M 区域多色打印,两者正面齐平并透光。
+
+### 3D 打印件
+
+`hardware/generate_m_shell.py` 生成显示器侧贴灯盒:
+
+| 文件 | 用途 |
+|---|---|
+| `hardware/mc_light_monitor_back.stl` | 后壳,背面贴双面胶,内部放 XIAO RP2040 |
+| `hardware/mc_light_monitor_front_red.stl` | 前盖红色半透明区域 |
+| `hardware/mc_light_monitor_front_M.stl` | 前盖黄色半透明 M 区域 |
+| `hardware/mc_light_monitor_front_assembled.stl` | 前盖红黄区域装配预览 |
+| `hardware/mc_light_monitor_assembled.stl` | 整体装配预览 |
+
+多色打印时,把红色区域和黄色 M 区域作为同一个前盖的两个颜色对象合并打印。前盖正面齐平,M 不突出。装配时将 XIAO RP2040 放进后壳,USB-C 端朝下,确认线缆能从底部向上插入,再扣上前盖并把后壳贴到显示器右侧。
 
 ## 安装
 

@@ -43,7 +43,7 @@
 - Consumes: existing module import path `hardware/generate_m_shell.py`.
 - Produces: tests expecting `BOX_W`, `BOX_H`, `BOX_D`, `FRONT_T`, `XIAO_W`, `XIAO_H`, `USB_OPEN_W`, `USB_OPEN_H`, `OUTPUTS`, `build_back_shell()`, `build_front_parts()`, `build_front_assembled()`, and `build_monitor_assembled()`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `hardware/test_generate_m_shell.py`:
 
@@ -131,13 +131,13 @@ def test_output_names_match_spec():
     ]
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python3 -m pytest hardware/test_generate_m_shell.py -v`
 
 Expected: FAIL with missing attributes such as `BOX_W` or `build_back_shell`.
 
-- [ ] **Step 3: Commit failing tests**
+- [x] **Step 3: Commit failing tests**
 
 ```bash
 git add hardware/test_generate_m_shell.py
@@ -161,7 +161,7 @@ git commit -m "test: cover monitor case generator geometry"
   - `build_monitor_assembled() -> trimesh.Trimesh`
   - `OUTPUTS: list[tuple[str, Callable[[], trimesh.Trimesh]]]`
 
-- [ ] **Step 1: Replace the generator docstring and imports**
+- [x] **Step 1: Replace the generator docstring and imports**
 
 At the top of `hardware/generate_m_shell.py`, use:
 
@@ -186,7 +186,7 @@ from shapely.affinity import translate as shp_translate
 from shapely.geometry import MultiPolygon, Polygon, box as shp_box
 ```
 
-- [ ] **Step 2: Define dimensions and helpers**
+- [x] **Step 2: Define dimensions and helpers**
 
 Replace the old parameter block and helper functions with:
 
@@ -236,7 +236,7 @@ def make_box(extents, center):
     return mesh
 ```
 
-- [ ] **Step 3: Add M and front-cover builders**
+- [x] **Step 3: Add M and front-cover builders**
 
 Add these functions after the helpers:
 
@@ -274,7 +274,7 @@ def build_front_assembled():
     return trimesh.util.concatenate([red, yellow])
 ```
 
-- [ ] **Step 4: Add back-shell builder**
+- [x] **Step 4: Add back-shell builder**
 
 Add:
 
@@ -311,7 +311,7 @@ def build_back_shell():
 
 During implementation, orient dimensions so global `X` is left-right, `Y` is vertical on the displayed face, and `Z` is depth from front to back. The bottom USB opening is at negative `Y`.
 
-- [ ] **Step 5: Add assembly builders and outputs**
+- [x] **Step 5: Add assembly builders and outputs**
 
 Add:
 
@@ -332,7 +332,7 @@ OUTPUTS = [
 ]
 ```
 
-- [ ] **Step 6: Replace `main()`**
+- [x] **Step 6: Replace `main()`**
 
 Use:
 
@@ -355,13 +355,13 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 7: Run geometry tests**
+- [x] **Step 7: Run geometry tests**
 
 Run: `python3 -m pytest hardware/test_generate_m_shell.py -v`
 
 Expected: PASS for all five tests.
 
-- [ ] **Step 8: Run generator and inspect exported meshes**
+- [x] **Step 8: Run generator and inspect exported meshes**
 
 Run: `python3 hardware/generate_m_shell.py`
 
@@ -376,7 +376,7 @@ mc_light_monitor_assembled.stl:
 完成。后壳单独打印;前盖红色区域和黄色 M 区域作为多色同层前盖合并打印。
 ```
 
-- [ ] **Step 9: Commit generator changes and generated STLs**
+- [x] **Step 9: Commit generator changes and generated STLs**
 
 ```bash
 git add hardware/generate_m_shell.py hardware/mc_light_monitor_back.stl hardware/mc_light_monitor_front_red.stl hardware/mc_light_monitor_front_M.stl hardware/mc_light_monitor_front_assembled.stl hardware/mc_light_monitor_assembled.stl
@@ -395,7 +395,7 @@ git commit -m "feat: generate monitor-side xiao case"
 - Consumes: output file names from Task 2.
 - Produces: user-facing printing and assembly instructions matching the new monitor-side model.
 
-- [ ] **Step 1: Update the hardware bullet**
+- [x] **Step 1: Update the hardware bullet**
 
 In `README.md`, replace:
 
@@ -409,7 +409,7 @@ with:
 - 3D 打印:显示器右侧贴装方形灯盒。后壳容纳 XIAO RP2040,USB-C 从底部往上插入;前盖用红色半透明区域 + 黄色半透明 M 区域多色打印,两者正面齐平并透光。
 ```
 
-- [ ] **Step 2: Add a 3D printing subsection after the hardware list**
+- [x] **Step 2: Add a 3D printing subsection after the hardware list**
 
 Insert:
 
@@ -429,13 +429,13 @@ Insert:
 多色打印时,把红色区域和黄色 M 区域作为同一个前盖的两个颜色对象合并打印。前盖正面齐平,M 不突出。装配时将 XIAO RP2040 放进后壳,USB-C 端朝下,确认线缆能从底部向上插入,再扣上前盖并把后壳贴到显示器右侧。
 ```
 
-- [ ] **Step 3: Run documentation checks**
+- [x] **Step 3: Run documentation checks**
 
 Run: `rg -n "桌面底座|mc_light_base|mc_light_M|显示器右侧|mc_light_monitor" README.md hardware/generate_m_shell.py docs/superpowers/specs/2026-07-18-monitor-side-xiao-case-design.md`
 
 Expected: no stale README instruction telling the user to print a desktop base; monitor-side output names appear in README and generator.
 
-- [ ] **Step 4: Run full available verification**
+- [x] **Step 4: Run full available verification**
 
 Run: `python3 -m pytest hardware/test_generate_m_shell.py -v`
 
@@ -445,7 +445,7 @@ Run: `cd host && python3 -m pytest -v`
 
 Expected: PASS for existing host tests.
 
-- [ ] **Step 5: Commit docs**
+- [x] **Step 5: Commit docs**
 
 ```bash
 git add README.md docs/superpowers/plans/2026-07-18-monitor-side-xiao-case.md
@@ -459,3 +459,11 @@ git commit -m "docs: document monitor-side case printing"
 - Spec coverage: Task 2 implements the back shell, bottom USB-C opening, XIAO pocket, flat translucent red/yellow front cover, split STL outputs, and assembly previews. Task 3 documents printing and assembly. Task 1 verifies key geometry constraints.
 - Placeholder scan: no `TBD`, `TODO`, or "implement later" markers are present.
 - Type consistency: tests and implementation tasks consistently use `build_back_shell`, `build_front_parts`, `build_front_assembled`, `build_monitor_assembled`, and `OUTPUTS`.
+
+---
+
+## 实施备注(2026-07-19)
+
+- 已按计划实现并提交。提交顺序为 feat(生成器+STL)-> test -> docs,使每个提交都通过测试(测试依赖生成器,故生成器先于测试提交)。
+- **Task 2 Step 4 偏差**:计划中限位筋高度公式 `rail_z = WALL_T + BOARD_POCKET_H / 2.0` 算得 13.2,大于 `BACK_D = 12.8`,会让筋凸出后壳前口并使 `sz ≈ BACK_D` 测试失败。已改为 `rail_z = WALL_T + BOARD_RAIL_H / 2.0`(=2.6),筋贴在内腔后壁、落在盒内 z∈[2.0, 3.2]。
+- **Task 3 Step 4 已知问题(非本次范围)**:`host/tests/test_mc_light.py::test_find_light_port_returns_matching_device` 在 HEAD 即失败——测试 mock `SimpleNamespace(vid, device)` 缺少生产代码 `host/mc_light.py:22` 读取的 `description`/`interface` 属性。`host/` 未被本次改动触及,留待单独修复。
