@@ -15,7 +15,8 @@ import os
 import numpy as np
 import trimesh
 from shapely.affinity import translate as shp_translate
-from shapely.geometry import MultiPolygon, Polygon, box as shp_box
+from shapely.geometry import LineString, MultiPolygon, box as shp_box
+from shapely.ops import unary_union
 
 # ----------------------------- 参数区 -----------------------------
 BOX_W = 38.0
@@ -63,20 +64,90 @@ def make_box(extents, center):
 
 
 def m_polygon(width=M_WIDTH):
-    """返回居中的麦当劳风格 M 填充多边形,位于 XY 平面。"""
-    arch_r = width / 4.0
-    leg_h = LEG_H * (width / M_WIDTH)
-    cx1 = arch_r
-    cx2 = width - arch_r
-    xs = np.linspace(0.0, width, CURVE_STEPS)
-    h1 = np.sqrt(np.clip(arch_r**2 - (xs - cx1) ** 2, 0, None))
-    h2 = np.sqrt(np.clip(arch_r**2 - (xs - cx2) ** 2, 0, None))
-    top = leg_h + np.maximum(h1, h2)
-    pts = [(0.0, 0.0)]
-    pts += [(float(x), float(y)) for x, y in zip(xs, top)]
-    pts += [(width, 0.0)]
-    poly = Polygon(pts)
-    return shp_translate(poly, xoff=-width / 2.0, yoff=-poly.bounds[3] / 2.0)
+    """返回居中的麦当劳风格镂空 M 多边形,位于 XY 平面。"""
+    scale = width / M_WIDTH
+    stroke_w = 3.0 * scale
+    left_x = stroke_w / 2.0
+    mid_x = width / 2.0
+    right_x = width - stroke_w / 2.0
+    peak_y = 20.0 * scale
+    outer_join_y = 4.8 * scale
+    center_join_y = 7.2 * scale
+    center_foot_y = 2.9 * scale
+    left_peak_x = width * 0.285
+    right_peak_x = width * 0.715
+
+    def cubic_points(p0, p1, p2, p3, steps):
+        ts = np.linspace(0.0, 1.0, steps)
+        pts = []
+        for t in ts:
+            omt = 1.0 - t
+            x = (
+                omt**3 * p0[0]
+                + 3 * omt**2 * t * p1[0]
+                + 3 * omt * t**2 * p2[0]
+                + t**3 * p3[0]
+            )
+            y = (
+                omt**3 * p0[1]
+                + 3 * omt**2 * t * p1[1]
+                + 3 * omt * t**2 * p2[1]
+                + t**3 * p3[1]
+            )
+            pts.append((float(x), float(y)))
+        return pts
+
+    def arch_path(start_x, peak_x, end_x):
+        if start_x < end_x:
+            up = cubic_points(
+                (start_x, outer_join_y),
+                (start_x + width * 0.035, outer_join_y + 3.0 * scale),
+                (peak_x - width * 0.095, peak_y),
+                (peak_x, peak_y),
+                CURVE_STEPS // 4,
+            )
+            down = cubic_points(
+                (peak_x, peak_y),
+                (peak_x + width * 0.115, peak_y),
+                (end_x - width * 0.075, center_join_y),
+                (end_x, center_join_y),
+                CURVE_STEPS // 4,
+            )[1:]
+        else:
+            up = cubic_points(
+                (start_x, center_join_y),
+                (start_x + width * 0.075, center_join_y),
+                (peak_x - width * 0.115, peak_y),
+                (peak_x, peak_y),
+                CURVE_STEPS // 4,
+            )
+            down = cubic_points(
+                (peak_x, peak_y),
+                (peak_x + width * 0.095, peak_y),
+                (end_x - width * 0.035, outer_join_y + 3.0 * scale),
+                (end_x, outer_join_y),
+                CURVE_STEPS // 4,
+            )[1:]
+        return up + down
+
+    strokes = unary_union([
+        LineString(
+            [(left_x, 0.0), (left_x, outer_join_y)]
+            + arch_path(left_x, left_peak_x, mid_x)
+        ),
+        LineString([(mid_x, center_foot_y), (mid_x, center_join_y)]),
+        LineString(
+            arch_path(mid_x, right_peak_x, right_x)
+            + [(right_x, outer_join_y), (right_x, 0.0)]
+        ),
+    ])
+    poly = largest(strokes.buffer(stroke_w / 2.0, cap_style=2, join_style=1, quad_segs=24))
+    min_x, min_y, max_x, max_y = poly.bounds
+    return shp_translate(
+        poly,
+        xoff=-(min_x + max_x) / 2.0,
+        yoff=-(min_y + max_y) / 2.0,
+    )
 
 
 def build_front_parts():
