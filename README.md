@@ -2,6 +2,37 @@
 
 感知 Claude Code agent 状态的麦当劳金拱门 "M" 指示灯。agent 干活时 M 常亮金色,等待授权时闪烁,空闲时熄灭。USB 连接,跨平台(Windows / Ubuntu)。
 
+## 效果
+
+| agent 状态 | 灯效 |
+|---|---|
+| 干活中(用户提交 / 工具执行完) | 金色常亮 |
+| 等待授权(Notification) | 金色闪烁(亮 0.5s / 灭 0.5s) |
+| 空闲(Stop / SessionEnd) | 熄灭 |
+
+## 项目结构
+
+```
+mc-light/
+├── firmware/            # XIAO RP2040 端 CircuitPython 固件
+│   ├── boot.py          # 开启第二路 USB CDC 数据串口
+│   └── code.py          # 主循环:读串口单字符,驱动 NeoPixel,45s 看门狗
+├── host/                # 电脑端脚本
+│   ├── mc_light.py      # hook 入口:按 VID 找串口,发送命令字符
+│   ├── requirements.txt # 依赖(pyserial)
+│   └── tests/           # pytest 单元测试(find_light_port / main 等)
+├── hardware/            # 3D 打印外壳
+│   ├── generate_m_shell.py  # 参数化生成显示器侧贴灯盒 STL
+│   ├── test_generate_m_shell.py
+│   └── *.stl / *.3mf    # 生成的打印件与切片文件
+├── hooks/               # Claude Code hooks 配置样例
+│   ├── settings.ubuntu.json
+│   └── settings.windows.json
+├── docs/                # 设计文档与迭代方案(superpowers specs/plans)
+├── server.sh            # 辅助脚本
+└── README.md
+```
+
 ## 硬件
 
 - Seeed XIAO RP2040 ×1(板载 NeoPixel RGB 灯)
@@ -47,10 +78,33 @@ Claude Code 事件 → hook 脚本 → USB 串口(单字符 1/2/0)→ XIAO 固�
 - `UserPromptSubmit` → 发 `1`(常亮金,干活中)
 - `Notification`(需要授权)→ 发 `2`(金色闪烁,等待授权)
 - `PostToolUse`(工具执行完,含授权后)→ 发 `1`(恢复常亮)
-- `Stop` → 发 `0`(灭,空闲)
-- 脚本按 USB VID 自动找设备(同时匹配 Raspberry Pi 官方 `0x2E8A` 与 Seeed 自家 `0x2886`),不硬编码端口名。
-- 找不到灯或出错时脚本静默退出,绝不影响 Claude Code。
-- 固件 45 秒看门狗:常亮或闪烁超时未更新自动熄灭(兜住 Ctrl+C 中断,因为 Claude Code 中断不触发 Stop hook)。
+- `Stop` / `SessionEnd` → 发 `0`(灭,空闲)
+
+### 通信协议
+
+主机与板子之间只有单字节字符命令,无握手、无回包:
+
+| 字符 | 含义 | 固件行为 |
+|---|---|---|
+| `1` | 常亮 | 金色 (255, 180, 0) 常亮 |
+| `2` | 闪烁 | 金色以 0.5s 半周期闪烁 |
+| `0` | 熄灭 | 关灯 |
+| 其它 | 预留(3-9) | 忽略 |
+
+### 关键设计
+
+- **串口选择**:`boot.py` 用 `usb_cdc.enable(console=True, data=True)` 打开两路 CDC,系统枚举出两个 ttyACM。`host/mc_light.py` 的 `find_light_port()` 按 description 里的 "CDC2" 选中数据口,选不到再回退到序号更大的那个。
+- **VID 自动匹配**:同时匹配 Raspberry Pi 官方 `0x2E8A` 与 Seeed 自家 `0x2886`,不硬编码端口名;别家 RP2040 板子可把 VID 加进 `XIAO_VIDS`。
+- **失败静默**:找不到灯或出错时脚本静默退出、返回 0,绝不影响 Claude Code(`MC_LIGHT_DEBUG=1` 时才把错误打到 stderr)。
+- **45 秒看门狗**:固件侧常亮或闪烁超时未更新自动熄灭——兜住 Ctrl+C 中断(Claude Code 中断不触发 Stop hook)。
+- **非阻塞读**:固件 `serial.timeout = 0`,主循环 50ms 一拍,同时处理闪烁翻转与看门狗。
+
+## 测试
+
+```
+pytest host/tests
+pytest hardware/test_generate_m_shell.py
+```
 
 ## 验收
 
