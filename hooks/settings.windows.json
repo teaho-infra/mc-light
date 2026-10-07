@@ -3,28 +3,36 @@
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "python C:\\ABSOLUTE\\PATH\\mc-light\\host\\mc_light.py on" }
+          { "type": "command", "command": "python \"$CODEBUDDY_PROJECT_DIR/host/mc_light.py\" on" }
         ]
       }
     ],
     "Notification": [
       {
+        "matcher": "permission_prompt",
         "hooks": [
-          { "type": "command", "command": "python C:\\ABSOLUTE\\PATH\\mc-light\\host\\mc_light.py wait" }
+          { "type": "command", "command": "python \"$CODEBUDDY_PROJECT_DIR/host/mc_light.py\" wait" }
         ]
       }
     ],
     "PostToolUse": [
       {
         "hooks": [
-          { "type": "command", "command": "python C:\\ABSOLUTE\\PATH\\mc-light\\host\\mc_light.py on" }
+          { "type": "command", "command": "python \"$CODEBUDDY_PROJECT_DIR/host/mc_light.py\" on" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python C:\\ABSOLUTE\\PATH\\mc-light\\host\\mc_light.py off" }
+          { "type": "command", "command": "python \"$CODEBUDDY_PROJECT_DIR/host/mc_light.py\" off" }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python \"$CODEBUDDY_PROJECT_DIR/host/mc_light.py\" off" }
         ]
       }
     ]

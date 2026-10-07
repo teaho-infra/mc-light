@@ -1,3 +1,5 @@
 .superpowers/
 __pycache__/
 *.pyc
+# 本地未提交的 CodeBuddy hooks 配置(合并进 .codebuddy/settings.local.json)
+.codebuddy/settings.local.json

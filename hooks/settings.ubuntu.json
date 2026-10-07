@@ -9,6 +9,7 @@
     ],
     "Notification": [
       {
+        "matcher": "permission_prompt",
         "hooks": [
           { "type": "command", "command": "conda run -n mc-light --no-capture-output python3 /home/leonbook5/IdeaProjects/agentspace/mc-light/host/mc_light.py wait" }
         ]

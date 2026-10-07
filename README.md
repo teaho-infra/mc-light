@@ -61,13 +61,23 @@ mc-light/
 3. 复制 `firmware/boot.py`、`firmware/code.py` 到 `CIRCUITPY` 根目录,重新插拔。
 
 ### 2. 主机脚本(电脑端)
-```
-pip install -r host/requirements.txt
-```
+- **Windows(推荐)**:`host/mc_light.py` 用纯标准库(winreg + ctypes),不需要装任何包。
+- **Ubuntu / WSL**:需要 pyserial:
+  ```
+  pip install -r host/requirements.txt
+  ```
 自测:`python3 host/mc_light.py on`(不插灯也应静默退出、返回 0)。
 
-### 3. Claude Code hooks
-把 `hooks/settings.ubuntu.json`(Ubuntu)或 `hooks/settings.windows.json`(Windows)的内容合并进 `~/.claude/settings.json`,并把命令里的路径改成你的绝对路径。Windows 用 `python`,Ubuntu 用 `python3`。
+### 3. Claude Code / CodeBuddy hooks
+把 `hooks/settings.ubuntu.json`(Ubuntu)或 `hooks/settings.windows.json`(Windows)的内容合并进你的 hook 配置文件,并把命令里的路径改成你的绝对路径。
+
+- **Ubuntu**(Claude Code):合并进 `~/.claude/settings.json`。
+- **Windows / CodeBuddy**:合并进 `~/.codebuddy/settings.json`。CodeBuddy 的 hook 命令在 Windows 上**强制用 Git Bash 执行**,配置里已用 `$CODEBUDDY_PROJECT_DIR` 环境变量定位项目,路径含空格也能正确处理。Windows 上直接用系统 `python`(已加入 PATH);若你的 python 不在 PATH,把 `python` 换成绝对路径并在两侧加引号,例如:
+  ```
+  "C:\\Users\\you\\AppData\\Local\\Programs\\Python\\Python312\\python.exe" "$CODEBUDDY_PROJECT_DIR/host/mc_light.py" on
+  ```
+
+> 提示:直接运行 `host/mc_light.py` 即可验证 hook 命令是否正确。CodeBuddy 的 `$CODEBUDDY_PROJECT_DIR` 只在 hook 运行时注入,命令行里手动跑要用真实路径。
 
 ## 工作原理
 
@@ -76,7 +86,7 @@ Claude Code 事件 → hook 脚本 → USB 串口(单字符 1/2/0)→ XIAO 固�
 ```
 
 - `UserPromptSubmit` → 发 `1`(常亮金,干活中)
-- `Notification`(需要授权)→ 发 `2`(金色闪烁,等待授权)
+- `Notification`(仅 `permission_prompt` 授权请求,matcher 过滤)→ 发 `2`(金色闪烁,等待授权)。普通输入等待(60s 无输入的 `idle_prompt`)不触发闪烁。
 - `PostToolUse`(工具执行完,含授权后)→ 发 `1`(恢复常亮)
 - `Stop` / `SessionEnd` → 发 `0`(灭,空闲)
 
@@ -93,7 +103,7 @@ Claude Code 事件 → hook 脚本 → USB 串口(单字符 1/2/0)→ XIAO 固�
 
 ### 关键设计
 
-- **串口选择**:`boot.py` 用 `usb_cdc.enable(console=True, data=True)` 打开两路 CDC,系统枚举出两个 ttyACM。`host/mc_light.py` 的 `find_light_port()` 按 description 里的 "CDC2" 选中数据口,选不到再回退到序号更大的那个。
+- **串口选择**:`boot.py` 用 `usb_cdc.enable(console=True, data=True)` 打开两路 CDC。`host/mc_light.py` 的 `_select_data_port()` 优先 description 里的 "CDC2"/"data" 标记;Windows 上描述没有该文本时,改用 USB 接口号(`MI_00`/`MI_02`)区分——data 口接口号大。**绝不按 COM 号排序**(Windows 的 COM 号不保证顺序,`COM9` 在 `COM10` 前)。无法唯一识别时返回 None 静默退出,可用环境变量 `MC_LIGHT_PORT=COM10` 显式指定。
 - **VID 自动匹配**:同时匹配 Raspberry Pi 官方 `0x2E8A` 与 Seeed 自家 `0x2886`,不硬编码端口名;别家 RP2040 板子可把 VID 加进 `XIAO_VIDS`。
 - **失败静默**:找不到灯或出错时脚本静默退出、返回 0,绝不影响 Claude Code(`MC_LIGHT_DEBUG=1` 时才把错误打到 stderr)。
 - **45 秒看门狗**:固件侧常亮或闪烁超时未更新自动熄灭——兜住 Ctrl+C 中断(Claude Code 中断不触发 Stop hook)。
@@ -138,4 +148,19 @@ Seeed 版 XIAO RP2040 的 USB VID 是 `0x2886`,不是 Raspberry Pi 官方的 `0x
 python3 -c "from serial.tools import list_ports; [print(p.device, hex(p.vid) if p.vid else None, p.description) for p in list_ports.comports()]"
 ```
 
-如果看到板子只出一个 `ttyACM`(应该有两个:控制台 + 数据),说明 `firmware/boot.py` 没生效——检查它是否已复制到 `CIRCUITPY` 根目录并**断电重插**过一次(boot.py 只在上电时执行)。
+Windows 上(无 pyserial)看 COM 口:
+
+```
+powershell -NoProfile -Command "Get-PnpDevice -PresentOnly | Where-Object { $_.Class -eq 'Ports' } | Format-Table FriendlyName,InstanceId -AutoSize"
+```
+
+### Windows 串口枚举与显式指定
+
+- 板子会枚举出两个 COM 口:**console(REPL)口**和 **data 口**。脚本选 data 口。
+- 若自动识别失败或插了多块同厂商板子,用环境变量显式指定:
+  ```
+  MC_LIGHT_PORT=COM10 MC_LIGHT_DEBUG=1 python host/mc_light.py on
+  ```
+- 找到的口不对时(例如灯没反应),`MC_LIGHT_DEBUG=1` 会在 stderr 打印错误;也可以逐口试:分别 `MC_LIGHT_PORT=COMx` 跑 `on`,灯亮的那口就是 data 口。
+
+如果看到板子只出一个 COM 口(应该有两个:控制台 + 数据),说明 `firmware/boot.py` 没生效——检查它是否已复制到 `CIRCUITPY` 根目录并**断电重插**过一次(boot.py 只在上电时执行)。
